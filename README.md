@@ -25,7 +25,7 @@ package main
 
 import (
     "fmt"
-    "github.com/komodorio/kubernetes-parsers/parsers/pods"
+    "github.com/komodorio/kubernetes-parsers/pkg/parsers/pods"
     v1 "k8s.io/api/core/v1"
 )
 
