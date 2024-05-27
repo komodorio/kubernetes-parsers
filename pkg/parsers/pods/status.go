@@ -36,6 +36,7 @@ const (
 	Terminating = "Terminating"
 )
 
+// FindStatusForPod extracts a Pod current status, taking into account its Phase, Container States and Status Conditions
 func FindStatusForPod(pod corev1.Pod) string {
 	reason := string(pod.Status.Phase)
 	if pod.Status.Reason != "" {
