@@ -1,0 +1,45 @@
+name: Go Tests
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22
+
+      # Cache Go modules
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-
+
+      # Install dependencies
+      - name: Install dependencies
+        run: go mod tidy
+
+      # Run Go tests
+      - name: Run tests
+        run: go test ./... -v
+
+      # Report failure on test failure
+      - name: Ensure no test failures
+        if: failure()
+        run: |
+          echo "❌ Tests failed, merging to master is blocked."
+          exit 1
