@@ -49,6 +49,8 @@ func FindStatusForPod(pod corev1.Pod) string {
 		switch {
 		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0:
 			continue
+		case IsRestartableInitContainer(&pod.Spec.InitContainers[i]):
+			continue
 		case container.State.Terminated != nil:
 			// initialization is failed
 			if len(container.State.Terminated.Reason) == 0 {
@@ -115,4 +117,14 @@ func hasPodReadyCondition(conditions []corev1.PodCondition) bool {
 		}
 	}
 	return false
+}
+
+// IsRestartableInitContainer returns true if the container has ContainerRestartPolicyAlways.
+// This function is not checking if the container passed to it is indeed an init container.
+// It is just checking if the container restart policy has been set to always.
+func IsRestartableInitContainer(initContainer *corev1.Container) bool {
+	if initContainer == nil || initContainer.RestartPolicy == nil {
+		return false
+	}
+	return *initContainer.RestartPolicy == corev1.ContainerRestartPolicyAlways
 }
