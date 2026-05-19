@@ -8,6 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const initContainerName = "init-container"
+
 // PodWithStatus creates a Pod with provided attributes for testing.
 func PodWithStatus(phase corev1.PodPhase, reason string, initStatuses, containerStatuses []corev1.ContainerStatus,
 	deletionTimestamp *metav1.Time, ready corev1.ConditionStatus, customSpec *corev1.PodSpec) corev1.Pod {
@@ -99,14 +101,40 @@ func TestFindStatusForPod_InitContainerRestartableBeforeVersion_1_29(t *testing.
 // https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/#pod-sidecar-containers
 func TestFindStatusForPod_InitContainerRestartableFromVersion_1_29(t *testing.T) {
 	restartPolicy := corev1.ContainerRestartPolicyAlways
-	spec := &corev1.PodSpec{InitContainers: []corev1.Container{{RestartPolicy: &restartPolicy}}}
+	spec := &corev1.PodSpec{InitContainers: []corev1.Container{
+		{
+			Name:          initContainerName,
+			RestartPolicy: &restartPolicy,
+		},
+	}}
 
 	initStatuses := []corev1.ContainerStatus{
-		{State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.Now()}}},
+		{
+			Name:  initContainerName,
+			State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.Now()}},
+		},
 	}
 	pod := PodWithStatus(corev1.PodRunning, "", initStatuses, nil, nil, corev1.ConditionTrue, spec)
 	status := FindStatusForPod(pod)
 	assert.Equal(t, "Running", status)
+}
+
+// TestFindStatusForPod_InitContainerMissing tests the FindStatusForPod function with a pod with unexpected structure - InitContainers empty, but InitContainerStatuses is not empty.
+// This tests an issue that caused panic in production
+func TestFindStatusForPod_InitContainerMissing(t *testing.T) {
+	// InitContainers empty
+	spec := &corev1.PodSpec{InitContainers: []corev1.Container{}}
+
+	// but InitContainerStatuses is not empty
+	initStatuses := []corev1.ContainerStatus{
+		{
+			Name:  initContainerName,
+			State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.Now()}},
+		},
+	}
+	pod := PodWithStatus(corev1.PodRunning, "", initStatuses, nil, nil, corev1.ConditionTrue, spec)
+	status := FindStatusForPod(pod)
+	assert.Equal(t, "Init:0/0", status)
 }
 
 func TestFindStatusForPod_ContainerRunning(t *testing.T) {

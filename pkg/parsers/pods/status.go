@@ -49,7 +49,7 @@ func FindStatusForPod(pod corev1.Pod) string {
 		switch {
 		case container.State.Terminated != nil && container.State.Terminated.ExitCode == 0:
 			continue
-		case IsRestartableInitContainer(&pod.Spec.InitContainers[i]):
+		case IsRestartableInitContainer(findContainer(pod.Spec.InitContainers, container.Name)):
 			continue
 		case container.State.Terminated != nil:
 			// initialization is failed
@@ -127,4 +127,13 @@ func IsRestartableInitContainer(initContainer *corev1.Container) bool {
 		return false
 	}
 	return *initContainer.RestartPolicy == corev1.ContainerRestartPolicyAlways
+}
+
+func findContainer(containers []corev1.Container, name string) *corev1.Container {
+	for i := range containers {
+		if containers[i].Name == name {
+			return &containers[i]
+		}
+	}
+	return nil
 }
